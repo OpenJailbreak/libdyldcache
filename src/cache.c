@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define _DEBUG
 #include <libcrippy-1.0/file.h>
 #include <libcrippy-1.0/debug.h>
 #include <libcrippy-1.0/libcrippy.h>
@@ -34,6 +35,7 @@
  * Dyldcache Functions
  */
 dyldcache_t* dyldcache_create() {
+	debug("Creating dyld cache structure\n");
 	dyldcache_t* cache = (dyldcache_t*) malloc(sizeof(dyldcache_t));
 	if (cache) {
 		memset(cache, '\0', sizeof(dyldcache_t));
@@ -52,7 +54,7 @@ dyldcache_t* dyldcache_open(const char* path) {
 	dyldimage_t* image = NULL;
 	unsigned char* data = NULL;
 	unsigned char* buffer = NULL;
-
+	debug("Opening dyld shared cache\n");
 	cache = dyldcache_create();
 	if (cache) {
 		err = file_read(path, &buffer, &length);
@@ -100,6 +102,7 @@ dyldcache_t* dyldcache_open(const char* path) {
 }
 
 void dyldcache_free(dyldcache_t* cache) {
+	debug("Freeing dyld cache structure\n");
 	if (cache) {
 		if (cache->header) {
 			dyldcache_header_free(cache->header);
@@ -133,8 +136,8 @@ void dyldcache_debug(dyldcache_t* cache) {
 	if (cache) {
 		debug("Dyldcache:\n");
 		if (cache->header) dyldcache_header_debug(cache->header);
-		if (cache->images) dyldcache_images_debug(cache->images);
-		if (cache->maps) dyldcache_maps_debug(cache->maps);
+		if (cache->images) dyldcache_images_debug(cache);
+		if (cache->maps) dyldcache_maps_debug(cache);
 	}
 }
 
@@ -142,6 +145,7 @@ void dyldcache_debug(dyldcache_t* cache) {
  * Dyldcache Architecture Functions
  */
 architecture_t* dyldcache_architecture_create() {
+	debug("Creating dyld cache architecture structure\n");
 	architecture_t* arch = (architecture_t*) malloc(sizeof(architecture_t));
 	if (arch) {
 		memset(arch, '\0', sizeof(architecture_t*));
@@ -150,6 +154,7 @@ architecture_t* dyldcache_architecture_create() {
 }
 
 architecture_t* dyldcache_architecture_load(dyldcache_t* cache) {
+	debug("Loading dyld cache architecture\n");
 	unsigned char* found = NULL;
 	architecture_t* arch = dyldcache_architecture_create();
 	if (arch) {
@@ -159,7 +164,6 @@ architecture_t* dyldcache_architecture_load(dyldcache_t* cache) {
 			arch->cpu_type = kArmType;
 			arch->cpu_subtype = kArmv6;
 			arch->cpu_endian = kLittleEndian;
-			return arch;
 		}
 
 		found = strstr(cache->data, DYLDARCH_ARMV7);
@@ -168,14 +172,15 @@ architecture_t* dyldcache_architecture_load(dyldcache_t* cache) {
 			arch->cpu_type = kArmType;
 			arch->cpu_subtype = kArmv7;
 			arch->cpu_endian = kLittleEndian;
-			return arch;
 		}
 
 		// TODO: Add other architectures in here. We only need iPhone for now.
+		dyldcache_architecture_debug(arch);
 	}
 
 	if (found == NULL) {
 		error("Unknown architechure encountered! %s\n", cache->data);
+		return NULL;
 	}
 
 	return arch;
@@ -191,6 +196,7 @@ void dyldcache_architecture_debug(architecture_t* arch) {
 }
 
 void dyldcache_architecture_free(architecture_t* arch) {
+	debug("Freeing dyld cache architecture structure\n");
 	if (arch) {
 		free(arch);
 	}
@@ -200,6 +206,7 @@ void dyldcache_architecture_free(architecture_t* arch) {
  * Dyldcache Header Functions
  */
 dyldcache_header_t* dyldcache_header_create() {
+	debug("Creating dyld cache header\n");
 	dyldcache_header_t* header = (dyldcache_header_t*) malloc(sizeof(dyldcache_header_t));
 	if (header) {
 		memset(header, '\0', sizeof(dyldcache_header_t));
@@ -208,16 +215,20 @@ dyldcache_header_t* dyldcache_header_create() {
 }
 
 void dyldcache_header_free(dyldcache_header_t* header) {
+	debug("Freeing dyld cache header\n");
 	if (header) {
 		free(header);
 	}
 }
 
 dyldcache_header_t* dyldcache_header_load(dyldcache_t* cache) {
+	debug("Loading dyld cache header\n");
 	dyldcache_header_t* header = dyldcache_header_create();
 	if (header) {
 		memcpy(header, cache->data, sizeof(dyldcache_header_t));
 	}
+
+	dyldcache_header_debug(header);
 	return header;
 }
 
@@ -238,6 +249,7 @@ void dyldcache_header_debug(dyldcache_header_t* header) {
  * Dyldcache Images Functions
  */
 dyldimage_t** dyldcache_images_create(uint32_t count) {
+	debug("Creating dyld cache images array\n");
 	uint32_t size = (count+1) * sizeof(dyldimage_t*);
 	dyldimage_t** images = (dyldimage_t**) malloc(size);
 	if (images) {
@@ -247,6 +259,7 @@ dyldimage_t** dyldcache_images_create(uint32_t count) {
 }
 
 dyldimage_t** dyldcache_images_load(dyldcache_t* cache) {
+	debug("Loading dyld cache images\n");
 	uint32_t i = 0;
 	uint32_t count = 0;
 	uint32_t offset = 0;
@@ -262,36 +275,51 @@ dyldimage_t** dyldcache_images_load(dyldcache_t* cache) {
 			return NULL;
 		}
 
+		offset = cache->header->images_offset;
 		for (i = 0; i < count; i++) {
-			image = dyldimage_parse(cache->data, cache->header->images_offset + i*sizeof(dyldimage_info_t));
+			debug("Loading image %d\n", i);
+			image = dyldimage_parse(cache->data, offset);
 			if (image == NULL) {
 				error("Unable to parse dyld image from cache\n");
 				return NULL;
 			}
 			image->map = dyldcache_map_address(cache, image->address);
 			image->offset = image->address - image->map->address;
-			image->data = &cache->data[image->offset];
-			image->size = *(uint32_t*)(image->data + 0x38);
+			image->data = &cache->data[offset];
+			if(image->data) {
+				image->size = *(uint32_t*)(image->data + 0x38);
+			} else {
+				image->size = 0;
+			}
 			images[i] = image;
+			offset += sizeof(dyldimage_info_t);
 		}
-		//dyldcache_images_debug(maps);
+		dyldcache_images_debug(cache);
 	}
 	return images;
 }
 
-void dyldcache_images_debug(dyldimage_t** images) {
-	if (images) {
-		debug("\tImages:\n");
-		int i = 0;
-		while (images[i]) {
-			dyldimage_debug(images[i]);
-			i++;
+void dyldcache_images_debug(dyldcache_t* cache) {
+	int i = 0;
+	dyldimage_t* image = NULL;
+	dyldimage_t** images = NULL;
+	if (cache) {
+		images = cache->images;
+		if(images) {
+			debug("\tImage:\n");
+			for(i = 0; i < cache->header->images_count; i++) {
+				image = images[i];
+				if(image) {
+					dyldmap_debug(image);
+				}
+			}
+			debug("\n");
 		}
-		debug("\n");
 	}
 }
 
 void dyldcache_images_free(dyldimage_t** images) {
+	debug("Freeing dyld cache images\n");
 	if (images) {
 		// Loop through each image and free it
 		int i = 0;
@@ -308,6 +336,7 @@ void dyldcache_images_free(dyldimage_t** images) {
  * Dyldcache Maps Functions
  */
 dyldmap_t** dyldcache_maps_create(uint32_t count) {
+	debug("Creating dyld cache maps array\n");
 	uint32_t size = (count+1) * sizeof(dyldmap_t*);
 	dyldmap_t** maps = (dyldmap_t**) malloc(size);
 	if (maps) {
@@ -317,8 +346,10 @@ dyldmap_t** dyldcache_maps_create(uint32_t count) {
 }
 
 dyldmap_t** dyldcache_maps_load(dyldcache_t* cache) {
+	debug("Loading dyld cache maps\n");
 	int i = 0;
 	uint32_t count = 0;
+	uint32_t offset = 0;
 	dyldmap_t** maps = NULL;
 	if (cache) {
 		count = cache->header->mapping_count;
@@ -328,32 +359,42 @@ dyldmap_t** dyldcache_maps_load(dyldcache_t* cache) {
 			return NULL;
 		}
 
+		offset = cache->header->mapping_offset;
 		for (i = 0; i < count; i++) {
-			maps[i] = dyldmap_parse(cache->data, cache->header->mapping_offset + i*sizeof(dyldmap_info_t));
+			debug("Parsing mapping %d\n", i);
+			maps[i] = dyldmap_parse(cache->data, offset);
 			if (maps[i] == NULL) {
 				error("Unable to parse dyld map from cache\n");
 				return NULL;
 			}
-			cache->count++;
+			offset += sizeof(dyldmap_info_t);
 		}
-		//dyldcache_maps_debug(maps);
+		dyldcache_maps_debug(cache);
 	}
 	return maps;
 }
 
-void dyldcache_maps_debug(dyldmap_t** maps) {
-	if (maps) {
-		debug("\tMaps:\n");
-		int i = 0;
-		while (maps[i]) {
-			dyldmap_info_debug(maps[i]->info);
-			i++;
+void dyldcache_maps_debug(dyldcache_t* cache) {
+	int i = 0;
+	dyldmap_t* map = NULL;
+	dyldmap_t** maps = NULL;
+	if (cache) {
+		maps = cache->maps;
+		if(maps) {
+			debug("\tMaps:\n");
+			for(i = 0; i < cache->header->mapping_count; i++) {
+				map = maps[i];
+				if(map) {
+					dyldmap_debug(map);
+				}
+			}
+			debug("\n");
 		}
-		debug("\n");
 	}
 }
 
 void dyldcache_maps_free(dyldmap_t** maps) {
+	debug("Freeing dyldcache maps\n");
 	if (maps) {
 		int i = 0;
 		// Loop through each map and free it
@@ -366,10 +407,12 @@ void dyldcache_maps_free(dyldmap_t** maps) {
 }
 
 dyldmap_t* dyldcache_map_image(dyldcache_t* cache, dyldimage_t* image) {
+	debug("Mapping dyld cache image\n");
 	return dyldcache_map_address(cache, image->address);
 }
 
 dyldmap_t* dyldcache_map_address(dyldcache_t* cache, uint64_t address) {
+	debug("Mapping dyld cache address\n");
 	int i = 0;
 	dyldmap_t* map = NULL;
 	for(i = 0; i < cache->header->mapping_count; i++) {
@@ -383,6 +426,7 @@ dyldmap_t* dyldcache_map_address(dyldcache_t* cache, uint64_t address) {
 
 
 dyldimage_t* dyldcache_get_image(dyldcache_t* cache, const char* dylib) {
+	debug("Getting dyld cache image\n");
 	int i = 0;
 	dyldimage_t* image = NULL;
 	for(i = 0; i < cache->count; i++) {
@@ -398,10 +442,12 @@ dyldimage_t* dyldcache_get_image(dyldcache_t* cache, const char* dylib) {
 }
 
 dyldimage_t* dyldcache_first_image(dyldcache_t* cache) {
+	debug("Returning first image in dyld cache\n");
 	return cache->images[0];
 }
 
 dyldimage_t* dyldcache_next_image(dyldcache_t* cache, dyldimage_t* image) {
+	debug("Returning next image in dyld cache\n");
 	int i = 0;
 	dyldimage_t* next = NULL;
 	for(i = 0; i < cache->count; i++) {

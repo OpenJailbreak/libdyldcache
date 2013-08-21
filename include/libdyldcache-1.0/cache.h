@@ -112,7 +112,7 @@ void dyldcache_header_free(dyldcache_header_t* header);
  */
 dyldimage_t** dyldcache_images_create(uint32_t count);
 dyldimage_t** dyldcache_images_load(dyldcache_t* cache);
-void dyldcache_images_debug(dyldimage_t** images);
+void dyldcache_images_debug(dyldcache_t* cache);
 void dyldcache_images_free(dyldimage_t** images);
 
 /*
@@ -120,7 +120,7 @@ void dyldcache_images_free(dyldimage_t** images);
  */
 dyldmap_t** dyldcache_maps_create(uint32_t count);
 dyldmap_t** dyldcache_maps_load(dyldcache_t* cache);
-void dyldcache_maps_debug(dyldmap_t** maps);
+void dyldcache_maps_debug(dyldcache_t* cache);
 void dyldcache_maps_free(dyldmap_t** maps);
 
 #endif /* DYLDCACHE_H_ */

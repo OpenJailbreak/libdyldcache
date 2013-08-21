@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define _DEBUG
 #include <libcrippy-1.0/debug.h>
 #include <libcrippy-1.0/libcrippy.h>
 #include <libdyldcache-1.0/map.h>
@@ -31,6 +32,7 @@
  */
 
 dyldimage_t* dyldimage_create() {
+	debug("Creating dyldimage\n");
 	dyldimage_t* image = (dyldimage_t*) malloc(sizeof(dyldimage_t));
 	if (image) {
 		memset(image, '\0', sizeof(dyldimage_t));
@@ -39,7 +41,7 @@ dyldimage_t* dyldimage_create() {
 }
 
 dyldimage_t* dyldimage_parse(unsigned char* data, uint32_t offset) {
-	unsigned char* buffer = &data[offset];
+	debug("Parsing dyldimage\n");
 	dyldimage_t* image = dyldimage_create();
 	if (image) {
 		image->info = dyldimage_info_parse(data, offset);
@@ -48,14 +50,19 @@ dyldimage_t* dyldimage_parse(unsigned char* data, uint32_t offset) {
 			return NULL;
 		}
 		image->path = &data[image->info->offset];
-		image->name = strrchr(image->path, '/')+1;
+		debug("Found image %s\n", image->path);
+		if(image->path != NULL) {
+			image->name = strrchr(image->path, '/')+1;
+		}
 		image->address = image->info->address;
 		image->size = 0;
+		dyldimage_debug(image);
 	}
 	return image;
 }
 
 void dyldimage_free(dyldimage_t* image) {
+	debug("Freeing dyldimage\n");
 	if (image) {
 		if (image->info) {
 			dyldimage_info_free(image->info);
@@ -80,6 +87,7 @@ void dyldimage_debug(dyldimage_t* image) {
  */
 
 dyldimage_info_t* dyldimage_info_create() {
+	debug("Creating dyldimage info\n");
 	dyldimage_info_t* info = (dyldimage_info_t*) malloc(sizeof(dyldimage_info_t));
 	if(info) {
 		memset(info, '\0', sizeof(dyldimage_info_t*));
@@ -88,6 +96,7 @@ dyldimage_info_t* dyldimage_info_create() {
 }
 
 dyldimage_info_t* dyldimage_info_parse(unsigned char* data, uint32_t offset) {
+	debug("Parsing dyldimage info\n");
 	dyldimage_info_t* info = dyldimage_info_create();
 	if(info) {
 		memcpy(info, &data[offset], sizeof(dyldimage_info_t));
@@ -96,6 +105,7 @@ dyldimage_info_t* dyldimage_info_parse(unsigned char* data, uint32_t offset) {
 }
 
 void dyldimage_info_free(dyldimage_info_t* info) {
+	debug("Freeing dyldimage info\n");
 	if (info) {
 		free(info);
 	}
@@ -111,6 +121,7 @@ void dyldimage_info_debug(dyldimage_info_t* info) {
 }
 
 void dyldimage_save(dyldimage_t* image, const char* path) {
+	debug("Saving dyldimage\n");
 	if(image != NULL && image->data != NULL && image->size > 0) {
 		printf("Writing dylib to %s\n", path);
 		file_write(path, image->data, image->size);
@@ -118,5 +129,6 @@ void dyldimage_save(dyldimage_t* image, const char* path) {
 }
 
 char* dyldimage_get_name(dyldimage_t* image) {
+	debug("Returning dyldimage name\n");
 	return image->name;
 }

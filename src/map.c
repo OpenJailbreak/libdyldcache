@@ -21,12 +21,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define _DEBUG
 #include <libcrippy-1.0/debug.h>
 #include <libcrippy-1.0/libcrippy.h>
 #include <libcrippy-1.0/boolean.h>
 #include <libdyldcache-1.0/map.h>
 
 dyldmap_t* dyldmap_create() {
+	debug("Creating dyldmap\n");
 	dyldmap_t* map = (dyldmap_t*) malloc(sizeof(dyldmap_t));
 	if(map) {
 		memset(map, '\0', sizeof(dyldmap_t));
@@ -35,7 +37,7 @@ dyldmap_t* dyldmap_create() {
 }
 
 dyldmap_t* dyldmap_parse(unsigned char* data, uint32_t offset) {
-	unsigned char* buffer = &data[offset];
+	debug("Parsing dyldmap\n");
 	dyldmap_t* map = dyldmap_create();
 	if (map) {
 		map->info = dyldmap_info_parse(data, offset);
@@ -46,11 +48,13 @@ dyldmap_t* dyldmap_parse(unsigned char* data, uint32_t offset) {
 		map->address = map->info->address;
 		map->size = map->info->size;
 		map->offset = map->info->offset;
+		dyldmap_debug(map);
 	}
 	return map;
 }
 
 boolean_t dyldmap_contains(dyldmap_t* map, uint64_t address) {
+	debug("Seeing if dyldmap contains address\n");
 	if(address >= map->address &&
 			address < (map->address + map->size)) {
 		return kTrue;
@@ -59,6 +63,7 @@ boolean_t dyldmap_contains(dyldmap_t* map, uint64_t address) {
 }
 
 void dyldmap_free(dyldmap_t* map) {
+	debug("Freeing dyldmap\n");
 	if(map) {
 		if (map->info) {
 			dyldmap_info_free(map->info);
@@ -71,6 +76,9 @@ void dyldmap_free(dyldmap_t* map) {
 void dyldmap_debug(dyldmap_t* map) {
 	if(map) {
 		debug("\tMap:\n");
+		if(map->info) {
+			dyldmap_info_debug(map->info);
+		}
 		debug("\t\n");
 	}
 }
@@ -79,6 +87,7 @@ void dyldmap_debug(dyldmap_t* map) {
  * Dyldcache Map Info Functions
  */
 dyldmap_info_t* dyldmap_info_create() {
+	debug("Creating dyldmap info\n");
 	dyldmap_info_t* info = (dyldmap_info_t*) malloc(sizeof(dyldmap_info_t));
 	if(info) {
 		memset(info, '\0', sizeof(dyldmap_info_t));
@@ -87,6 +96,7 @@ dyldmap_info_t* dyldmap_info_create() {
 }
 
 dyldmap_info_t* dyldmap_info_parse(unsigned char* data, uint32_t offset) {
+	debug("Parsing dyldmap info\n");
 	dyldmap_info_t* info = dyldmap_info_create();
 	if(info) {
 		memcpy(info, &data[offset], sizeof(dyldmap_info_t));
@@ -107,6 +117,7 @@ void dyldmap_info_debug(dyldmap_info_t* info) {
 }
 
 void dyldmap_info_free(dyldmap_info_t* info) {
+	debug("Freeing dyldmap info\n");
 	if(info) {
 		free(info);
 	}
