@@ -1,0 +1,11 @@
+prefix=/opt/local
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libdyldcache-1.0
+Description: Small C library to parse and extract Apple dyldcache files
+Requires: libcrippy-1.0 >= 1.0 libmacho-1.0 >= 1.0
+Version: 2.0
+Libs: -L${libdir} -lirecovery
+Cflags: -I${includedir}
